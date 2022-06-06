@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 #[derive(Debug)]
 pub enum Segment {
-    Constant
+    Constant,
 }
 
 impl FromStr for Segment {
@@ -11,7 +11,7 @@ impl FromStr for Segment {
     fn from_str(s: &str) -> Result<Segment, String> {
         match s {
             "constant" => Ok(Segment::Constant),
-            _ => Err(format!("Unknown segment name: '{}'", s))
+            _ => Err(format!("Unknown segment name: '{}'", s)),
         }
     }
 }
@@ -19,7 +19,7 @@ impl FromStr for Segment {
 #[derive(Debug)]
 pub enum Command {
     Push { segment: Segment, index: u16 },
-    Pop  { segment: Segment, index: u16 },
+    Pop { segment: Segment, index: u16 },
     Add,
     Sub,
     Neg,
@@ -28,7 +28,7 @@ pub enum Command {
     Lt,
     And,
     Or,
-    Not
+    Not,
 }
 
 impl FromStr for Command {
@@ -78,7 +78,10 @@ impl Command {
             } else if index.is_err() {
                 Err(format!("Error parsing index: {}", index.unwrap_err()))
             } else {
-                Ok(Command::Push { segment: segment.unwrap(), index: index.unwrap() })
+                Ok(Command::Push {
+                    segment: segment.unwrap(),
+                    index: index.unwrap(),
+                })
             }
         } else {
             Err(format!("push expected format 'push <segment> <index>'"))
@@ -90,16 +93,18 @@ impl Command {
 pub struct SourceCommand<'a> {
     line: usize,
     command: Command,
-    source: &'a str
+    source: &'a str,
 }
 
 pub fn parse_source(source: &str) -> Result<Vec<SourceCommand>, String> {
-    source.lines().enumerate().filter_map(|(i, line)| {
-        match strip_comments(line) {
+    source
+        .lines()
+        .enumerate()
+        .filter_map(|(i, line)| match strip_comments(line) {
             Some(s) => Some(parse_source_command(i, s)),
-            None    => None
-        }
-    }).collect()
+            None => None,
+        })
+        .collect()
 }
 
 fn strip_comments(line: &str) -> Option<&str> {
@@ -109,7 +114,8 @@ fn strip_comments(line: &str) -> Option<&str> {
             let (code, _) = line.split_at(i);
             code
         }
-    }.trim();
+    }
+    .trim();
 
     if code.is_empty() {
         None
@@ -120,14 +126,11 @@ fn strip_comments(line: &str) -> Option<&str> {
 
 fn parse_source_command<'a>(i: usize, source: &'a str) -> Result<SourceCommand<'a>, String> {
     match source.parse::<Command>() {
-        Ok(command) => Ok(
-            SourceCommand{
-                line: i,
-                command: command,
-                source: source
-            }
-        ),
-        Err(e) => Err(format!("Parse error at line {} ({}): {}", i, source, e))
+        Ok(command) => Ok(SourceCommand {
+            line: i,
+            command: command,
+            source: source,
+        }),
+        Err(e) => Err(format!("Parse error at line {} ({}): {}", i, source, e)),
     }
 }
-

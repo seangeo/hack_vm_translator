@@ -1,7 +1,7 @@
 use std::env;
-use std::process;
-use std::fs;
 use std::error::Error;
+use std::fs;
+use std::process;
 
 mod vm;
 
