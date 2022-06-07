@@ -2,7 +2,14 @@ use std::str::FromStr;
 
 #[derive(Debug)]
 pub enum Segment {
+    Argument,
     Constant,
+    Local,
+    Pointer,
+    Static,
+    Temp,
+    That,
+    This,
 }
 
 impl FromStr for Segment {
@@ -10,7 +17,14 @@ impl FromStr for Segment {
 
     fn from_str(s: &str) -> Result<Segment, String> {
         match s {
+            "argument" => Ok(Segment::Argument),
             "constant" => Ok(Segment::Constant),
+            "local" => Ok(Segment::Local),
+            "pointer" => Ok(Segment::Pointer),
+            "static" => Ok(Segment::Static),
+            "temp" => Ok(Segment::Temp),
+            "that" => Ok(Segment::That),
+            "this" => Ok(Segment::This),
             _ => Err(format!("Unknown segment name: '{}'", s)),
         }
     }
@@ -43,6 +57,8 @@ impl Command {
     fn from_str(line: &str) -> Result<Command, String> {
         if let Some(s) = line.strip_prefix("push") {
             Command::parse_push(s.trim())
+        } else if let Some(s) = line.strip_prefix("pop") {
+            Command::parse_pop(s.trim())
         } else if line == "add" {
             Ok(Command::Add)
         } else if line == "sub" {
@@ -66,7 +82,27 @@ impl Command {
         }
     }
 
+    fn parse_pop(s: &str) -> Result<Command, String> {
+        match Command::parse_stack_arguments(s) {
+            Ok((segment, index)) => Ok(Command::Pop {
+                segment: segment,
+                index: index,
+            }),
+            Err(e) => Err(e),
+        }
+    }
+
     fn parse_push(s: &str) -> Result<Command, String> {
+        match Command::parse_stack_arguments(s) {
+            Ok((segment, index)) => Ok(Command::Push {
+                segment: segment,
+                index: index,
+            }),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn parse_stack_arguments(s: &str) -> Result<(Segment, u16), String> {
         let parts: Vec<&str> = s.split_whitespace().collect();
 
         if parts.len() == 2 {
@@ -78,10 +114,7 @@ impl Command {
             } else if index.is_err() {
                 Err(format!("Error parsing index: {}", index.unwrap_err()))
             } else {
-                Ok(Command::Push {
-                    segment: segment.unwrap(),
-                    index: index.unwrap(),
-                })
+                Ok((segment.unwrap(), index.unwrap()))
             }
         } else {
             Err(format!("push expected format 'push <segment> <index>'"))
