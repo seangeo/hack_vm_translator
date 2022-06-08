@@ -129,6 +129,20 @@ pub struct SourceCommand<'a> {
     source: &'a str,
 }
 
+impl<'a> SourceCommand<'a> {
+    pub fn line(&self) -> usize {
+        self.line
+    }
+
+    pub fn source(&self) -> &str {
+        self.source
+    }
+
+    pub fn command(&self) -> &Command {
+        &self.command
+    }
+}
+
 pub fn parse_source(source: &str) -> Result<Vec<SourceCommand>, String> {
     source
         .lines()
