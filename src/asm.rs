@@ -70,7 +70,7 @@ fn generate_not(sc: &SourceCommand) -> Result<String, String> {
 fn generate_push(sc: &SourceCommand, _segment: &Segment, index: u16) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
     asm.push(comment(sc));
-    asm.push(format!("@{}", index));
+    asm.push(format!("@{index}"));
     asm.push(format!("D=A"));
     asm.push(push_d_onto_stack());
     Ok(asm.join("\n"))
@@ -85,8 +85,7 @@ fn generate_binary_operation(source_command: &SourceCommand, op: &str) -> Result
         @SP
         M=M-1
         A=M
-        D={}",
-        op
+        D={op}"
     ));
     asm.push(push_d_onto_stack());
     Ok(asm.join("\n"))
@@ -96,7 +95,7 @@ fn generate_unary(sc: &SourceCommand, op: &str) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
     asm.push(comment(sc));
     asm.push(pop_to_d());
-    asm.push(formatdoc!("D={}", op));
+    asm.push(formatdoc!("D={op}"));
     asm.push(push_d_onto_stack());
 
     Ok(asm.join("\n"))
