@@ -72,6 +72,7 @@ fn generate_pop(sc: &SourceCommand, segment: &Segment, index: u16) -> Result<Str
     match segment {
         Segment::Argument => pop_to_segment(sc, "ARG", index),
         Segment::Local => pop_to_segment(sc, "LCL", index),
+        Segment::Pointer => pop_to_address(sc, index + 3),
         Segment::Temp => pop_to_address(sc, index + 5),
         Segment::That => pop_to_segment(sc, "THAT", index),
         Segment::This => pop_to_segment(sc, "THIS", index),
@@ -114,14 +115,15 @@ fn generate_push(sc: &SourceCommand, segment: &Segment, index: u16) -> Result<St
         Segment::Argument => push_from_segment(sc, "ARG", index),
         Segment::Constant => push_constant(sc, index),
         Segment::Local => push_from_segment(sc, "LCL", index),
-        Segment::Temp => push_from_index(sc, index + 5),
+        Segment::Pointer => push_from_address(sc, index + 3),
+        Segment::Temp => push_from_address(sc, index + 5),
         Segment::That => push_from_segment(sc, "THAT", index),
         Segment::This => push_from_segment(sc, "THIS", index),
         _ => Err(format!("Unable to address segment for push: {segment:?}")),
     }
 }
 
-fn push_from_index(sc: &SourceCommand, index: u16) -> Result<String, String> {
+fn push_from_address(sc: &SourceCommand, index: u16) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
     asm.push(comment(sc));
     asm.push(formatdoc!(
