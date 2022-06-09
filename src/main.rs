@@ -1,11 +1,11 @@
 use std::env;
 use std::error::Error;
 use std::fs;
-use std::process;
 use std::path::Path;
+use std::process;
 
-pub mod vm;
 pub mod asm;
+pub mod vm;
 
 fn parse_args(args: &[String]) -> Result<String, &'static str> {
     if args.len() > 1 {
@@ -22,13 +22,17 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("Usage: hack_vmtranslator <vmfile>");
         process::exit(1);
     });
+    let source_file_path = Path::new(&source_file);
     let vm_source = fs::read_to_string(&source_file)?;
-    let ast = vm::parse_source(&vm_source)?;
+    let ast = vm::parse_source(
+        source_file_path.file_stem().unwrap().to_str().unwrap(),
+        &vm_source,
+    )?;
     let asm = asm::generate_code(ast)?;
 
     println!("source file = {}", source_file);
 
-    let target_file_name = Path::new(&source_file).with_extension("asm");
+    let target_file_name = source_file_path.with_extension("asm");
     println!("output file = {}", target_file_name.to_str().unwrap());
     fs::write(target_file_name, asm.join("\n"))?;
 

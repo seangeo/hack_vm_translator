@@ -127,6 +127,7 @@ pub struct SourceCommand<'a> {
     line: usize,
     command: Command,
     source: &'a str,
+    file_base: &'a str,
 }
 
 impl<'a> SourceCommand<'a> {
@@ -141,14 +142,18 @@ impl<'a> SourceCommand<'a> {
     pub fn command(&self) -> &Command {
         &self.command
     }
+
+    pub fn file_base(&self) -> &str {
+        &self.file_base
+    }
 }
 
-pub fn parse_source(source: &str) -> Result<Vec<SourceCommand>, String> {
+pub fn parse_source<'a>(file_base: &'a str, source: &'a str) -> Result<Vec<SourceCommand<'a>>, String> {
     source
         .lines()
         .enumerate()
         .filter_map(|(i, line)| match strip_comments(line) {
-            Some(s) => Some(parse_source_command(i, s)),
+            Some(s) => Some(parse_source_command(file_base, i, s)),
             None => None,
         })
         .collect()
@@ -171,9 +176,10 @@ fn strip_comments(line: &str) -> Option<&str> {
     }
 }
 
-fn parse_source_command<'a>(i: usize, source: &'a str) -> Result<SourceCommand<'a>, String> {
+fn parse_source_command<'a>(file_base: &'a str, i: usize, source: &'a str) -> Result<SourceCommand<'a>, String> {
     match source.parse::<Command>() {
         Ok(command) => Ok(SourceCommand {
+            file_base: file_base,
             line: i,
             command: command,
             source: source,

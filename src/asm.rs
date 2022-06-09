@@ -73,6 +73,7 @@ fn generate_pop(sc: &SourceCommand, segment: &Segment, index: u16) -> Result<Str
         Segment::Argument => pop_to_segment(sc, "ARG", index),
         Segment::Local => pop_to_segment(sc, "LCL", index),
         Segment::Pointer => pop_to_address(sc, index + 3),
+        Segment::Static => pop_to_variable(sc, &format!("{}.{index}", sc.file_base())),
         Segment::Temp => pop_to_address(sc, index + 5),
         Segment::That => pop_to_segment(sc, "THAT", index),
         Segment::This => pop_to_segment(sc, "THIS", index),
@@ -81,15 +82,7 @@ fn generate_pop(sc: &SourceCommand, segment: &Segment, index: u16) -> Result<Str
 }
 
 fn pop_to_address(sc: &SourceCommand, address: u16) -> Result<String, String> {
-    let mut asm: Vec<String> = Vec::new();
-    asm.push(comment(sc));
-    asm.push(pop_to_d());
-    asm.push(formatdoc!(
-        "@{address}
-        M=D"
-    ));
-
-    Ok(asm.join("\n"))
+    pop_to_variable(sc, &address.to_string())
 }
 
 fn pop_to_segment(sc: &SourceCommand, segment_name: &str, index: u16) -> Result<String, String> {
@@ -110,30 +103,47 @@ fn pop_to_segment(sc: &SourceCommand, segment_name: &str, index: u16) -> Result<
     Ok(asm.join("\n"))
 }
 
+fn pop_to_variable(sc: &SourceCommand, variable: &str) -> Result<String, String> {
+    let mut asm: Vec<String> = Vec::new();
+    asm.push(comment(sc));
+    asm.push(pop_to_d());
+    asm.push(formatdoc!(
+        "@{variable}
+        M=D"
+    ));
+
+    Ok(asm.join("\n"))
+}
+
 fn generate_push(sc: &SourceCommand, segment: &Segment, index: u16) -> Result<String, String> {
     match segment {
         Segment::Argument => push_from_segment(sc, "ARG", index),
         Segment::Constant => push_constant(sc, index),
         Segment::Local => push_from_segment(sc, "LCL", index),
         Segment::Pointer => push_from_address(sc, index + 3),
+        Segment::Static => push_from_variable(sc, &format!("{}.{index}", sc.file_base())),
         Segment::Temp => push_from_address(sc, index + 5),
         Segment::That => push_from_segment(sc, "THAT", index),
         Segment::This => push_from_segment(sc, "THIS", index),
-        _ => Err(format!("Unable to address segment for push: {segment:?}")),
     }
 }
 
-fn push_from_address(sc: &SourceCommand, index: u16) -> Result<String, String> {
+fn push_from_variable(sc: &SourceCommand, variable: &str) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
     asm.push(comment(sc));
     asm.push(formatdoc!(
-        "@{index}
+        "@{variable}
         D=M
         "
     ));
     asm.push(push_d_onto_stack());
 
     Ok(asm.join("\n"))
+
+}
+
+fn push_from_address(sc: &SourceCommand, index: u16) -> Result<String, String> {
+    push_from_variable(sc, &index.to_string())
 }
 
 fn push_from_segment(sc: &SourceCommand, segment_name: &str, index: u16) -> Result<String, String> {
