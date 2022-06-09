@@ -96,7 +96,7 @@ impl Command {
         match Command::parse_stack_arguments(s) {
             Ok((segment, index)) => Ok(Command::Push {
                 segment: segment,
-                index: index,
+                index: index, // TODO validate index based on segment
             }),
             Err(e) => Err(e),
         }
