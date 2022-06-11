@@ -148,7 +148,10 @@ impl<'a> SourceCommand<'a> {
     }
 }
 
-pub fn parse_source<'a>(file_base: &'a str, source: &'a str) -> Result<Vec<SourceCommand<'a>>, String> {
+pub fn parse_source<'a>(
+    file_base: &'a str,
+    source: &'a str,
+) -> Result<Vec<SourceCommand<'a>>, String> {
     source
         .lines()
         .enumerate()
@@ -176,7 +179,11 @@ fn strip_comments(line: &str) -> Option<&str> {
     }
 }
 
-fn parse_source_command<'a>(file_base: &'a str, i: usize, source: &'a str) -> Result<SourceCommand<'a>, String> {
+fn parse_source_command<'a>(
+    file_base: &'a str,
+    i: usize,
+    source: &'a str,
+) -> Result<SourceCommand<'a>, String> {
     match source.parse::<Command>() {
         Ok(command) => Ok(SourceCommand {
             file_base: file_base,

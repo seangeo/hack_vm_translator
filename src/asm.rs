@@ -69,11 +69,11 @@ fn generate_lt(source_command: &SourceCommand) -> Result<String, String> {
     generate_comparison(source_command, "JGT")
 }
 
-fn generate_neg()-> Result<String, String> {
+fn generate_neg() -> Result<String, String> {
     generate_unary("-D")
 }
 
-fn generate_not()-> Result<String, String> {
+fn generate_not() -> Result<String, String> {
     generate_unary("!D")
 }
 
@@ -145,7 +145,6 @@ fn push_from_variable(variable: &str) -> Result<String, String> {
     asm.push(push_d_onto_stack());
 
     Ok(asm.join("\n"))
-
 }
 
 fn push_from_address(index: u16) -> Result<String, String> {
@@ -231,7 +230,12 @@ fn generate_comparison(sc: &SourceCommand, comp: &str) -> Result<String, String>
 }
 
 fn comment(source_command: &SourceCommand) -> String {
-    format!("// [{}] {}\n", source_command.line(), source_command.source())
+    format!(
+        "// {}[{}]: {}\n",
+        source_command.file_base(),
+        source_command.line(),
+        source_command.source()
+    )
 }
 
 fn pop_to_d() -> String {
