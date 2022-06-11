@@ -203,6 +203,7 @@ fn generate_unary(op: &str) -> Result<String, String> {
 // comparison is true based on the value of D.
 //
 fn generate_comparison(sc: &SourceCommand, comp: &str) -> Result<String, String> {
+    let file = sc.file_base();
     let line = sc.line();
     let mut asm: Vec<String> = Vec::new();
     asm.push(pop_to_d());
@@ -212,16 +213,16 @@ fn generate_comparison(sc: &SourceCommand, comp: &str) -> Result<String, String>
         M=M-1
         A=M
         D=D-M
-        @COMP_TRUE_{line}
+        @COMP_TRUE_{file}.{line}
         D;{comp}
         @0
         D=A
-        @COMP_END_{line}
+        @COMP_END_{file}.{line}
         0;JMP
-        (COMP_TRUE_{line})
+        (COMP_TRUE_{file}.{line})
         @1
         D=-A
-        (COMP_END_{line})
+        (COMP_END_{file}.{line})
         "
     ));
     asm.push(push_d_onto_stack());
