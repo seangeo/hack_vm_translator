@@ -113,7 +113,7 @@ fn pop_to_segment(segment_name: &str, index: u16) -> Result<String, String> {
 
 fn pop_to_variable(variable: &str) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
-    asm.push(pop_to_d());
+    asm.push(pop_d());
     asm.push(formatdoc!(
         "@{variable}
         M=D"
@@ -142,7 +142,7 @@ fn push_from_variable(variable: &str) -> Result<String, String> {
         D=M
         "
     ));
-    asm.push(push_d_onto_stack());
+    asm.push(push_d());
 
     Ok(asm.join("\n"))
 }
@@ -160,7 +160,7 @@ fn push_from_segment(segment_name: &str, index: u16) -> Result<String, String> {
         A=D+M
         D=M"
     ));
-    asm.push(push_d_onto_stack());
+    asm.push(push_d());
 
     Ok(asm.join("\n"))
 }
@@ -169,28 +169,28 @@ fn push_constant(value: u16) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
     asm.push(format!("@{value}"));
     asm.push(format!("D=A"));
-    asm.push(push_d_onto_stack());
+    asm.push(push_d());
     Ok(asm.join("\n"))
 }
 
 fn generate_binary_operation(op: &str) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
-    asm.push(pop_to_d());
+    asm.push(pop_d());
     asm.push(formatdoc!(
         "
         @SP
         AM=M-1
         D={op}"
     ));
-    asm.push(push_d_onto_stack());
+    asm.push(push_d());
     Ok(asm.join("\n"))
 }
 
 fn generate_unary(op: &str) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
-    asm.push(pop_to_d());
+    asm.push(pop_d());
     asm.push(formatdoc!("D={op}"));
-    asm.push(push_d_onto_stack());
+    asm.push(push_d());
 
     Ok(asm.join("\n"))
 }
@@ -206,7 +206,7 @@ fn generate_comparison(sc: &SourceCommand, comp: &str) -> Result<String, String>
     let file = sc.file_base();
     let line = sc.line();
     let mut asm: Vec<String> = Vec::new();
-    asm.push(pop_to_d());
+    asm.push(pop_d());
     asm.push(formatdoc!(
         "
         @SP
@@ -225,7 +225,7 @@ fn generate_comparison(sc: &SourceCommand, comp: &str) -> Result<String, String>
         (COMP_END_{file}.{line})
         "
     ));
-    asm.push(push_d_onto_stack());
+    asm.push(push_d());
 
     Ok(asm.join("\n"))
 }
@@ -239,7 +239,7 @@ fn comment(source_command: &SourceCommand) -> String {
     )
 }
 
-fn pop_to_d() -> String {
+fn pop_d() -> String {
     formatdoc!(
         "
         @SP
@@ -248,7 +248,7 @@ fn pop_to_d() -> String {
     )
 }
 
-fn push_d_onto_stack() -> String {
+fn push_d() -> String {
     formatdoc!(
         "
         @SP
