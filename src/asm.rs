@@ -9,40 +9,49 @@ pub fn generate_code(commands: Vec<SourceCommand>) -> Result<Vec<String>, String
 }
 
 fn generate_code_for_command(source_command: &SourceCommand) -> Result<String, String> {
-    match source_command.command() {
-        Command::Add => generate_add(source_command),
-        Command::And => generate_and(source_command),
+    let code = match source_command.command() {
+        Command::Add => generate_add(),
+        Command::And => generate_and(),
         Command::Eq => generate_eq(source_command),
         Command::Gt => generate_gt(source_command),
         Command::Lt => generate_lt(source_command),
-        Command::Neg => generate_neg(source_command),
-        Command::Not => generate_not(source_command),
-        Command::Or => generate_or(source_command),
+        Command::Neg => generate_neg(),
+        Command::Not => generate_not(),
+        Command::Or => generate_or(),
         Command::Pop { segment, index } => generate_pop(source_command, segment, *index),
         Command::Push { segment, index } => generate_push(source_command, segment, *index),
-        Command::Sub => generate_sub(source_command),
+        Command::Sub => generate_sub(),
         _ => Err(format!(
             "Code generation not implemented for [{}]: '{}'",
             source_command.line(),
             source_command.source()
         )),
+    };
+
+    if let Ok(code) = code {
+        let mut result = String::new();
+        result.push_str(&comment(source_command));
+        result.push_str(&code);
+        Ok(result)
+    } else {
+        code
     }
 }
 
-fn generate_and(source_command: &SourceCommand) -> Result<String, String> {
-    generate_binary_operation(source_command, "D&M")
+fn generate_and() -> Result<String, String> {
+    generate_binary_operation("D&M")
 }
 
-fn generate_or(source_command: &SourceCommand) -> Result<String, String> {
-    generate_binary_operation(source_command, "D|M")
+fn generate_or() -> Result<String, String> {
+    generate_binary_operation("D|M")
 }
 
-fn generate_add(source_command: &SourceCommand) -> Result<String, String> {
-    generate_binary_operation(source_command, "D+M")
+fn generate_add() -> Result<String, String> {
+    generate_binary_operation("D+M")
 }
 
-fn generate_sub(source_command: &SourceCommand) -> Result<String, String> {
-    generate_binary_operation(source_command, "M-D")
+fn generate_sub() -> Result<String, String> {
+    generate_binary_operation("M-D")
 }
 
 fn generate_eq(source_command: &SourceCommand) -> Result<String, String> {
@@ -60,34 +69,33 @@ fn generate_lt(source_command: &SourceCommand) -> Result<String, String> {
     generate_comparison(source_command, "JGT")
 }
 
-fn generate_neg(sc: &SourceCommand) -> Result<String, String> {
-    generate_unary(sc, "-D")
+fn generate_neg()-> Result<String, String> {
+    generate_unary("-D")
 }
 
-fn generate_not(sc: &SourceCommand) -> Result<String, String> {
-    generate_unary(sc, "!D")
+fn generate_not()-> Result<String, String> {
+    generate_unary("!D")
 }
 
 fn generate_pop(sc: &SourceCommand, segment: &Segment, index: u16) -> Result<String, String> {
     match segment {
-        Segment::Argument => pop_to_segment(sc, "ARG", index),
-        Segment::Local => pop_to_segment(sc, "LCL", index),
-        Segment::Pointer => pop_to_address(sc, index + 3),
-        Segment::Static => pop_to_variable(sc, &format!("{}.{index}", sc.file_base())),
-        Segment::Temp => pop_to_address(sc, index + 5),
-        Segment::That => pop_to_segment(sc, "THAT", index),
-        Segment::This => pop_to_segment(sc, "THIS", index),
+        Segment::Argument => pop_to_segment("ARG", index),
+        Segment::Local => pop_to_segment("LCL", index),
+        Segment::Pointer => pop_to_address(index + 3),
+        Segment::Static => pop_to_variable(&format!("{}.{index}", sc.file_base())),
+        Segment::Temp => pop_to_address(index + 5),
+        Segment::That => pop_to_segment("THAT", index),
+        Segment::This => pop_to_segment("THIS", index),
         _ => Err(format!("Unable to address segment for pop: {segment:?}")),
     }
 }
 
-fn pop_to_address(sc: &SourceCommand, address: u16) -> Result<String, String> {
-    pop_to_variable(sc, &address.to_string())
+fn pop_to_address(address: u16) -> Result<String, String> {
+    pop_to_variable(&address.to_string())
 }
 
-fn pop_to_segment(sc: &SourceCommand, segment_name: &str, index: u16) -> Result<String, String> {
+fn pop_to_segment(segment_name: &str, index: u16) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
-    asm.push(comment(sc));
     asm.push(formatdoc!(
         "@{segment_name}
         D=M
@@ -103,9 +111,8 @@ fn pop_to_segment(sc: &SourceCommand, segment_name: &str, index: u16) -> Result<
     Ok(asm.join("\n"))
 }
 
-fn pop_to_variable(sc: &SourceCommand, variable: &str) -> Result<String, String> {
+fn pop_to_variable(variable: &str) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
-    asm.push(comment(sc));
     asm.push(pop_to_d());
     asm.push(formatdoc!(
         "@{variable}
@@ -117,20 +124,19 @@ fn pop_to_variable(sc: &SourceCommand, variable: &str) -> Result<String, String>
 
 fn generate_push(sc: &SourceCommand, segment: &Segment, index: u16) -> Result<String, String> {
     match segment {
-        Segment::Argument => push_from_segment(sc, "ARG", index),
-        Segment::Constant => push_constant(sc, index),
-        Segment::Local => push_from_segment(sc, "LCL", index),
-        Segment::Pointer => push_from_address(sc, index + 3),
-        Segment::Static => push_from_variable(sc, &format!("{}.{index}", sc.file_base())),
-        Segment::Temp => push_from_address(sc, index + 5),
-        Segment::That => push_from_segment(sc, "THAT", index),
-        Segment::This => push_from_segment(sc, "THIS", index),
+        Segment::Argument => push_from_segment("ARG", index),
+        Segment::Constant => push_constant(index),
+        Segment::Local => push_from_segment("LCL", index),
+        Segment::Pointer => push_from_address(index + 3),
+        Segment::Static => push_from_variable(&format!("{}.{index}", sc.file_base())),
+        Segment::Temp => push_from_address(index + 5),
+        Segment::That => push_from_segment("THAT", index),
+        Segment::This => push_from_segment("THIS", index),
     }
 }
 
-fn push_from_variable(sc: &SourceCommand, variable: &str) -> Result<String, String> {
+fn push_from_variable(variable: &str) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
-    asm.push(comment(sc));
     asm.push(formatdoc!(
         "@{variable}
         D=M
@@ -142,13 +148,12 @@ fn push_from_variable(sc: &SourceCommand, variable: &str) -> Result<String, Stri
 
 }
 
-fn push_from_address(sc: &SourceCommand, index: u16) -> Result<String, String> {
-    push_from_variable(sc, &index.to_string())
+fn push_from_address(index: u16) -> Result<String, String> {
+    push_from_variable(&index.to_string())
 }
 
-fn push_from_segment(sc: &SourceCommand, segment_name: &str, index: u16) -> Result<String, String> {
+fn push_from_segment(segment_name: &str, index: u16) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
-    asm.push(comment(sc));
     asm.push(formatdoc!(
         "@{index}
         D=A
@@ -161,18 +166,16 @@ fn push_from_segment(sc: &SourceCommand, segment_name: &str, index: u16) -> Resu
     Ok(asm.join("\n"))
 }
 
-fn push_constant(sc: &SourceCommand, value: u16) -> Result<String, String> {
+fn push_constant(value: u16) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
-    asm.push(comment(sc));
     asm.push(format!("@{value}"));
     asm.push(format!("D=A"));
     asm.push(push_d_onto_stack());
     Ok(asm.join("\n"))
 }
 
-fn generate_binary_operation(source_command: &SourceCommand, op: &str) -> Result<String, String> {
+fn generate_binary_operation(op: &str) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
-    asm.push(comment(source_command));
     asm.push(pop_to_d());
     asm.push(formatdoc!(
         "
@@ -184,9 +187,8 @@ fn generate_binary_operation(source_command: &SourceCommand, op: &str) -> Result
     Ok(asm.join("\n"))
 }
 
-fn generate_unary(sc: &SourceCommand, op: &str) -> Result<String, String> {
+fn generate_unary(op: &str) -> Result<String, String> {
     let mut asm: Vec<String> = Vec::new();
-    asm.push(comment(sc));
     asm.push(pop_to_d());
     asm.push(formatdoc!("D={op}"));
     asm.push(push_d_onto_stack());
@@ -204,7 +206,6 @@ fn generate_unary(sc: &SourceCommand, op: &str) -> Result<String, String> {
 fn generate_comparison(sc: &SourceCommand, comp: &str) -> Result<String, String> {
     let line = sc.line();
     let mut asm: Vec<String> = Vec::new();
-    asm.push(comment(sc));
     asm.push(pop_to_d());
     asm.push(formatdoc!(
         "
@@ -230,7 +231,7 @@ fn generate_comparison(sc: &SourceCommand, comp: &str) -> Result<String, String>
 }
 
 fn comment(source_command: &SourceCommand) -> String {
-    format!("// [{}] {}", source_command.line(), source_command.source())
+    format!("// [{}] {}\n", source_command.line(), source_command.source())
 }
 
 fn pop_to_d() -> String {
