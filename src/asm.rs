@@ -2,21 +2,27 @@ use crate::vm::{Command, Segment, SourceCommand};
 use indoc::formatdoc;
 
 pub fn generate_code(commands: Vec<SourceCommand>) -> Result<Vec<String>, String> {
+    let mut scope: Vec<String> = Vec::new();
+
     commands
         .iter()
-        .map(|command| generate_code_for_command(&command))
-        .collect()
+        .map(|source_command|{
+            if let Command::Function {name: function, nargs: _} = source_command.command() {
+                scope.push(format!("{function}"));
+            } else if let Command::Return = source_command.command()  {
+                scope.pop();
+            }
+
+            generate_code_for_command(&source_command, scope.last())
+        }).collect()
 }
 
-fn generate_code_for_command(source_command: &SourceCommand) -> Result<String, String> {
+fn generate_code_for_command(source_command: &SourceCommand, scope: Option<&String>) -> Result<String, String> {
     let code = match source_command.command() {
         Command::Add => generate_add(),
         Command::And => generate_and(),
         Command::Eq => generate_eq(source_command),
         Command::Gt => generate_gt(source_command),
-        Command::Goto(label) => generate_goto(source_command, label),
-        Command::IfGoto(label) => generate_if_goto(source_command, label),
-        Command::Label(label) => generate_label(source_command, label),
         Command::Lt => generate_lt(source_command),
         Command::Neg => generate_neg(),
         Command::Not => generate_not(),
@@ -24,6 +30,11 @@ fn generate_code_for_command(source_command: &SourceCommand) -> Result<String, S
         Command::Pop { segment, index } => generate_pop(source_command, segment, *index),
         Command::Push { segment, index } => generate_push(source_command, segment, *index),
         Command::Sub => generate_sub(),
+        Command::Goto(label) => generate_goto(source_command, label, scope),
+        Command::IfGoto(label) => generate_if_goto(source_command, label, scope),
+        Command::Label(label) => generate_label(source_command, label, scope),
+        Command::Function { name, nargs } => generate_function(source_command, name, *nargs),
+        Command::Return => generate_return(),
         _ => Err(format!(
             "Code generation not implemented for [{}]: '{}'",
             source_command.line(),
@@ -41,28 +52,39 @@ fn generate_code_for_command(source_command: &SourceCommand) -> Result<String, S
     }
 }
 
-fn generate_if_goto(source_command: &SourceCommand, label: &str) -> Result<String, String> {
-    let file = source_command.file_base();
+fn generate_if_goto(source_command: &SourceCommand, label: &str, scope: Option<&String>) -> Result<String, String> {
+    let file = source_command.file_base().to_string();
+    let label_scope = scope.unwrap_or(&file);
     let mut asm: Vec<String> = Vec::new();
     asm.push(pop_d());
     asm.push(formatdoc!(
-            "@{file}.{label}
+            "@{label_scope}${label}
             D;JNE"));
     Ok(asm.join("\n"))
 }
 
-fn generate_goto(source_command: &SourceCommand, label: &str) -> Result<String, String> {
-    let file = source_command.file_base();
+fn generate_goto(source_command: &SourceCommand, label: &str, scope: Option<&String>) -> Result<String, String> {
+    let file = source_command.file_base().to_string();
+    let label_scope = scope.unwrap_or(&file);
 
     Ok(formatdoc!(
-            "@{file}.{label}
+            "@{label_scope}${label}
              0;JMP"))
 }
 
-fn generate_label(source_command: &SourceCommand, label: &str) -> Result<String, String> {
-    let file = source_command.file_base();
+fn generate_label(source_command: &SourceCommand, label: &str, scope: Option<&String>) -> Result<String, String> {
+    let file = source_command.file_base().to_string();
+    let label_scope = scope.unwrap_or(&file);
 
-    Ok(format!("({file}.{label})"))
+    Ok(format!("({label_scope}${label})"))
+}
+
+fn generate_function(source_command: &SourceCommand, name: &str, nargs: u16) -> Result<String, String> {
+    Ok(format!(""))
+}
+
+fn generate_return() -> Result<String, String> {
+    Ok(format!(""))
 }
 
 fn generate_and() -> Result<String, String> {

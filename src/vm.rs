@@ -38,14 +38,16 @@ pub enum Command<'a> {
     Sub,
     Neg,
     Eq,
-    Goto(&'a str),
     Gt,
-    IfGoto(&'a str),
-    Label(&'a str ),
     Lt,
     And,
     Or,
     Not,
+    Goto(&'a str),
+    IfGoto(&'a str),
+    Label(&'a str ),
+    Function { name: &'a str, nargs: u16 },
+    Return,
 }
 
 impl<'a> Command<'a> {
@@ -60,6 +62,8 @@ impl<'a> Command<'a> {
             Command::parse_if_goto(s)
         } else if let Some(s) = line.strip_prefix("goto") {
             Command::parse_goto(s)
+        } else if let Some(s) = line.strip_prefix("function") {
+            Command::parse_function(s)
         } else if line == "add" {
             Ok(Command::Add)
         } else if line == "sub" {
@@ -78,6 +82,8 @@ impl<'a> Command<'a> {
             Ok(Command::Or)
         } else if line == "not" {
             Ok(Command::Not)
+        } else if line == "return" {
+            Ok(Command::Return)
         } else {
             Err(format!("Parser not implemented for '{}'", line))
         }
@@ -101,6 +107,16 @@ impl<'a> Command<'a> {
         match Self::parse_label_name(s) {
             Ok(name) => Ok(Command::Goto(name)),
             Err(e) => Err(e),
+        }
+    }
+
+    fn parse_function(s: &str) -> Result<Command, String> {
+        match Self::parse_label_and_n(s) {
+            Ok((name, n)) => Ok(Command::Function {
+                name: name,
+                nargs: n
+            }),
+            Err(e) => Err(e)
         }
     }
 
@@ -134,21 +150,34 @@ impl<'a> Command<'a> {
     }
 
     fn parse_stack_arguments(s: &str) -> Result<(Segment, u16), String> {
+        match Self::parse_label_and_n(s) {
+            Ok((label, n)) => {
+                let segment  = label.parse::<Segment>();
+
+                if segment.is_err() {
+                    Err(segment.unwrap_err())
+                } else {
+                    Ok((segment.unwrap(), n))
+                }
+            },
+            Err(e) => Err(e)
+        }
+    }
+
+    fn parse_label_and_n(s: &str) -> Result<(&str, u16), String> {
         let parts: Vec<&str> = s.split_whitespace().collect();
 
         if parts.len() == 2 {
-            let segment = parts[0].parse::<Segment>();
+            let name = parts[0];
             let index = parts[1].parse::<u16>();
 
-            if segment.is_err() {
-                Err(segment.unwrap_err())
-            } else if index.is_err() {
+            if index.is_err() {
                 Err(format!("Error parsing index: {}", index.unwrap_err()))
             } else {
-                Ok((segment.unwrap(), index.unwrap()))
+                Ok((name, index.unwrap()))
             }
         } else {
-            Err(format!("push expected format 'push <segment> <index>'"))
+            Err(format!("expected format '<string> <int>'"))
         }
     }
 }
