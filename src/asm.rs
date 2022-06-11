@@ -123,12 +123,14 @@ fn pop_to_variable(variable: &str) -> Result<String, String> {
 }
 
 fn generate_push(sc: &SourceCommand, segment: &Segment, index: u16) -> Result<String, String> {
+    let file = sc.file_base();
+
     match segment {
         Segment::Argument => push_from_segment("ARG", index),
         Segment::Constant => push_constant(index),
         Segment::Local => push_from_segment("LCL", index),
         Segment::Pointer => push_from_address(index + 3),
-        Segment::Static => push_from_variable(&format!("{}.{index}", sc.file_base())),
+        Segment::Static => push_from_variable(&format!("{file}.{index}")),
         Segment::Temp => push_from_address(index + 5),
         Segment::That => push_from_segment("THAT", index),
         Segment::This => push_from_segment("THIS", index),
