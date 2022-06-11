@@ -38,10 +38,10 @@ pub enum Command<'a> {
     Sub,
     Neg,
     Eq,
-    Goto { label: &'a str },
+    Goto(&'a str),
     Gt,
-    IfGoto { label: &'a str },
-    Label { name: &'a str },
+    IfGoto(&'a str),
+    Label(&'a str ),
     Lt,
     And,
     Or,
@@ -85,21 +85,21 @@ impl<'a> Command<'a> {
 
     fn parse_label(s: &str) -> Result<Command, String> {
         match Self::parse_label_name(s) {
-            Ok(s) => Ok(Command::Label { name: s }),
+            Ok(name) => Ok(Command::Label(name)),
             Err(e) => Err(e),
         }
     }
 
     fn parse_if_goto(s: &str) -> Result<Command, String> {
         match Self::parse_label_name(s) {
-            Ok(name) => Ok(Command::IfGoto { label: name }),
+            Ok(name) => Ok(Command::IfGoto(name)),
             Err(e) => Err(e),
         }
     }
 
     fn parse_goto(s: &str) -> Result<Command, String> {
         match Self::parse_label_name(s) {
-            Ok(name) => Ok(Command::Goto { label: name }),
+            Ok(name) => Ok(Command::Goto(name)),
             Err(e) => Err(e),
         }
     }

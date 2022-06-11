@@ -14,6 +14,9 @@ fn generate_code_for_command(source_command: &SourceCommand) -> Result<String, S
         Command::And => generate_and(),
         Command::Eq => generate_eq(source_command),
         Command::Gt => generate_gt(source_command),
+        Command::Goto(label) => generate_goto(source_command, label),
+        Command::IfGoto(label) => generate_if_goto(source_command, label),
+        Command::Label(label) => generate_label(source_command, label),
         Command::Lt => generate_lt(source_command),
         Command::Neg => generate_neg(),
         Command::Not => generate_not(),
@@ -36,6 +39,30 @@ fn generate_code_for_command(source_command: &SourceCommand) -> Result<String, S
     } else {
         code
     }
+}
+
+fn generate_if_goto(source_command: &SourceCommand, label: &str) -> Result<String, String> {
+    let file = source_command.file_base();
+    let mut asm: Vec<String> = Vec::new();
+    asm.push(pop_d());
+    asm.push(formatdoc!(
+            "@{file}.{label}
+            D;JNE"));
+    Ok(asm.join("\n"))
+}
+
+fn generate_goto(source_command: &SourceCommand, label: &str) -> Result<String, String> {
+    let file = source_command.file_base();
+
+    Ok(formatdoc!(
+            "@{file}.{label}
+             0;JMP"))
+}
+
+fn generate_label(source_command: &SourceCommand, label: &str) -> Result<String, String> {
+    let file = source_command.file_base();
+
+    Ok(format!("({file}.{label})"))
 }
 
 fn generate_and() -> Result<String, String> {
