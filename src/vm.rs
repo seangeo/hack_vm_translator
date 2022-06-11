@@ -31,34 +31,35 @@ impl FromStr for Segment {
 }
 
 #[derive(Debug)]
-pub enum Command {
+pub enum Command<'a> {
     Push { segment: Segment, index: u16 },
     Pop { segment: Segment, index: u16 },
     Add,
     Sub,
     Neg,
     Eq,
+    Goto { label: &'a str },
     Gt,
+    IfGoto { label: &'a str },
+    Label { name: &'a str },
     Lt,
     And,
     Or,
     Not,
 }
 
-impl FromStr for Command {
-    type Err = String;
-
-    fn from_str(line: &str) -> Result<Command, String> {
-        Command::from_str(line)
-    }
-}
-
-impl Command {
-    fn from_str(line: &str) -> Result<Command, String> {
+impl<'a> Command<'a> {
+    fn from_str(line: &'a str) -> Result<Command<'a>, String> {
         if let Some(s) = line.strip_prefix("push") {
             Command::parse_push(s.trim())
         } else if let Some(s) = line.strip_prefix("pop") {
             Command::parse_pop(s.trim())
+        } else if let Some(s) = line.strip_prefix("label") {
+            Command::parse_label(s.trim())
+        } else if let Some(s) = line.strip_prefix("if-goto") {
+            Command::parse_if_goto(s)
+        } else if let Some(s) = line.strip_prefix("goto") {
+            Command::parse_goto(s)
         } else if line == "add" {
             Ok(Command::Add)
         } else if line == "sub" {
@@ -79,6 +80,36 @@ impl Command {
             Ok(Command::Not)
         } else {
             Err(format!("Parser not implemented for '{}'", line))
+        }
+    }
+
+    fn parse_label(s: &str) -> Result<Command, String> {
+        match Self::parse_label_name(s) {
+            Ok(s) => Ok(Command::Label { name: s }),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn parse_if_goto(s: &str) -> Result<Command, String> {
+        match Self::parse_label_name(s) {
+            Ok(name) => Ok(Command::IfGoto { label: name }),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn parse_goto(s: &str) -> Result<Command, String> {
+        match Self::parse_label_name(s) {
+            Ok(name) => Ok(Command::Goto { label: name }),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn parse_label_name(s: &str) -> Result<&str, String> {
+        let s = s.trim();
+        if s.is_empty() {
+            Err(format!("Label must have a name"))
+        } else {
+            Ok(s)
         }
     }
 
@@ -125,7 +156,7 @@ impl Command {
 #[derive(Debug)]
 pub struct SourceCommand<'a> {
     line: usize,
-    command: Command,
+    command: Command<'a>,
     source: &'a str,
     file_base: &'a str,
 }
@@ -184,13 +215,15 @@ fn parse_source_command<'a>(
     i: usize,
     source: &'a str,
 ) -> Result<SourceCommand<'a>, String> {
-    match source.parse::<Command>() {
+    match Command::from_str(source) {
         Ok(command) => Ok(SourceCommand {
             file_base: file_base,
             line: i,
             command: command,
             source: source,
         }),
-        Err(e) => Err(format!("Parse error at line {} ({}): {}", i, source, e)),
+        Err(e) => Err(format!(
+            "Parse error at line {file_base}:{i} ({source}): {e}"
+        )),
     }
 }
