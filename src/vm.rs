@@ -211,7 +211,7 @@ impl<'a> SourceCommand<'a> {
 pub fn parse_source<'a>(
     file_base: &'a str,
     source: &'a str,
-) -> Result<Vec<SourceCommand<'a>>, String> {
+) -> Vec<Result<SourceCommand<'a>, String>> {
     source
         .lines()
         .enumerate()
