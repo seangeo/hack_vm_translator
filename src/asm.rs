@@ -7,7 +7,7 @@ pub fn generate_code(commands: Vec<SourceCommand>) -> Result<Vec<String>, String
     commands
         .iter()
         .map(|source_command|{
-            if let Command::Function {name: function, nargs: _} = source_command.command() {
+            if let Command::Function {name: function, nvars: _} = source_command.command() {
                 scope.push(format!("{function}"));
             } else if let Command::Return = source_command.command()  {
                 scope.pop();
@@ -33,7 +33,7 @@ fn generate_code_for_command(source_command: &SourceCommand, scope: Option<&Stri
         Command::Goto(label) => generate_goto(source_command, label, scope),
         Command::IfGoto(label) => generate_if_goto(source_command, label, scope),
         Command::Label(label) => generate_label(source_command, label, scope),
-        Command::Function { name, nargs } => generate_function(source_command, name, *nargs),
+        Command::Function { name, nvars } => generate_function(name, *nvars),
         Command::Return => generate_return(),
         _ => Err(format!(
             "Code generation not implemented for [{}]: '{}'",
@@ -79,12 +79,87 @@ fn generate_label(source_command: &SourceCommand, label: &str, scope: Option<&St
     Ok(format!("({label_scope}${label})"))
 }
 
-fn generate_function(source_command: &SourceCommand, name: &str, nargs: u16) -> Result<String, String> {
-    Ok(format!(""))
+fn generate_function(name: &str, nvars: u16) -> Result<String, String> {
+    let mut asm: Vec<String> = Vec::new();
+    asm.push(format!("({name})"));
+
+    for _ in 0..nvars {
+        asm.push(push_constant(0)?);
+    }
+
+    Ok(asm.join("\n"))
 }
 
 fn generate_return() -> Result<String, String> {
-    Ok(format!(""))
+    let mut asm: Vec<String> = Vec::new();
+    // frame = LCL
+    asm.push(formatdoc!(
+        "@LCL
+         D=M
+         @frame
+         M=D"));
+    // retAdd = *(frame - 5)
+    asm.push(formatdoc!(
+        "@frame
+        D=M
+        D=D-1
+        D=D-1
+        D=D-1
+        D=D-1
+        A=D-1
+        D=M
+        @retaddr
+        M=D"
+    ));
+    // *arg = pop
+    asm.push(pop_d());
+    asm.push(formatdoc!(
+        "@ARG
+         A=M
+         M=D"
+    ));
+    // sp = arg + 1
+    asm.push(formatdoc!(
+        "@ARG
+         D=M+1
+         @SP
+         M=D"
+    ));
+    // that = *(frame - 1)
+    // this = *(frame - 2)
+    // arg = *(frame - 3)
+    // lcl = *(frame - 4)
+    asm.push(formatdoc!(
+        "@frame
+        AM=M-1
+        D=M
+        @THAT
+        M=D
+        @frame
+        AM=M-1
+        D=M
+        @THIS
+        M=D
+        @frame
+        AM=M-1
+        D=M
+        @ARG
+        M=D
+        @frame
+        AM=M-1
+        D=M
+        @LCL
+        M=D"
+    ));
+    // goto retaddr
+    asm.push(formatdoc!(
+        "@retaddr
+        A=M
+        0;JMP"
+    ));
+
+
+    Ok(asm.join("\n"))
 }
 
 fn generate_and() -> Result<String, String> {

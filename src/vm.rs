@@ -46,7 +46,7 @@ pub enum Command<'a> {
     Goto(&'a str),
     IfGoto(&'a str),
     Label(&'a str ),
-    Function { name: &'a str, nargs: u16 },
+    Function { name: &'a str, nvars: u16 },
     Return,
 }
 
@@ -114,7 +114,7 @@ impl<'a> Command<'a> {
         match Self::parse_label_and_n(s) {
             Ok((name, n)) => Ok(Command::Function {
                 name: name,
-                nargs: n
+                nvars: n
             }),
             Err(e) => Err(e)
         }
