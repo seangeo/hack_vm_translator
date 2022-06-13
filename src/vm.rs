@@ -46,6 +46,7 @@ pub enum Command<'a> {
     Goto(&'a str),
     IfGoto(&'a str),
     Label(&'a str ),
+    Call {name: &'a str, nargs: u16 },
     Function { name: &'a str, nvars: u16 },
     Return,
 }
@@ -64,6 +65,8 @@ impl<'a> Command<'a> {
             Command::parse_goto(s)
         } else if let Some(s) = line.strip_prefix("function") {
             Command::parse_function(s)
+        } else if let Some(s) = line.strip_prefix("call") {
+            Command::parse_call(s)
         } else if line == "add" {
             Ok(Command::Add)
         } else if line == "sub" {
@@ -107,6 +110,16 @@ impl<'a> Command<'a> {
         match Self::parse_label_name(s) {
             Ok(name) => Ok(Command::Goto(name)),
             Err(e) => Err(e),
+        }
+    }
+
+    fn parse_call(s: &str) -> Result<Command, String> {
+        match Self::parse_label_and_n(s) {
+            Ok((name, n)) => Ok(Command::Call {
+                name: name,
+                nargs: n
+            }),
+            Err(e) => Err(e)
         }
     }
 

@@ -33,13 +33,9 @@ fn generate_code_for_command(source_command: &SourceCommand, scope: Option<&Stri
         Command::Goto(label) => generate_goto(source_command, label, scope),
         Command::IfGoto(label) => generate_if_goto(source_command, label, scope),
         Command::Label(label) => generate_label(source_command, label, scope),
+        Command::Call {name, nargs } => generate_call(name, *nargs),
         Command::Function { name, nvars } => generate_function(name, *nvars),
         Command::Return => generate_return(),
-        _ => Err(format!(
-            "Code generation not implemented for [{}]: '{}'",
-            source_command.line(),
-            source_command.source()
-        )),
     };
 
     if let Ok(code) = code {
@@ -77,6 +73,10 @@ fn generate_label(source_command: &SourceCommand, label: &str, scope: Option<&St
     let label_scope = scope.unwrap_or(&file);
 
     Ok(format!("({label_scope}${label})"))
+}
+
+fn generate_call(name: &str, nargs: u16) -> Result<String, String> {
+    Ok(format!(""))
 }
 
 fn generate_function(name: &str, nvars: u16) -> Result<String, String> {
