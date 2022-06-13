@@ -98,7 +98,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("source file = {}", source);
 
-    let target_file_name = source_path.with_extension("asm");
+    let target_file_name = if source_path.is_file() {
+        source_path.with_extension("asm")
+    } else {
+        let base_name = source_path.file_stem().unwrap();
+        source_path.join(PathBuf::from(base_name).with_extension("asm"))
+    };
     println!("output file = {}", target_file_name.to_str().unwrap());
     fs::write(target_file_name, asm.join("\n"))?;
 
