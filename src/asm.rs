@@ -247,21 +247,6 @@ fn generate_sub() -> Result<String, String> {
     generate_binary_operation("M-D")
 }
 
-fn generate_eq(source_command: &SourceCommand) -> Result<String, String> {
-    generate_comparison(source_command, "JEQ")
-}
-
-fn generate_gt(source_command: &SourceCommand) -> Result<String, String> {
-    // This is JLT (less than) because the semantics
-    // are x > y where y is the top of the stack, and
-    // x is below it. Since D = Y and M = X, and D=D-M
-    // we need to reverse the comparison.
-    generate_comparison(source_command, "JLT")
-}
-fn generate_lt(source_command: &SourceCommand) -> Result<String, String> {
-    generate_comparison(source_command, "JGT")
-}
-
 fn generate_neg() -> Result<String, String> {
     generate_unary("-D")
 }
@@ -390,6 +375,18 @@ fn generate_unary(op: &str) -> Result<String, String> {
     Ok(asm.join("\n"))
 }
 
+fn generate_eq(source_command: &SourceCommand) -> Result<String, String> {
+    generate_comparison(source_command, "JEQ")
+}
+
+fn generate_gt(source_command: &SourceCommand) -> Result<String, String> {
+    generate_comparison(source_command, "JGT")
+}
+
+fn generate_lt(source_command: &SourceCommand) -> Result<String, String> {
+    generate_comparison(source_command, "JLT")
+}
+
 // This generates a comparison process that will
 // store X - Y in the D register, where Y is the top
 // element of the stack, and X is second from the top.
@@ -405,9 +402,8 @@ fn generate_comparison(sc: &SourceCommand, comp: &str) -> Result<String, String>
     asm.push(formatdoc!(
         "
         @SP
-        M=M-1
-        A=M
-        D=D-M
+        AM=M-1
+        D=M-D
         @COMP_TRUE_{file}.{line}
         D;{comp}
         @0
