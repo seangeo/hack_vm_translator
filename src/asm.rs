@@ -3,18 +3,55 @@ use indoc::formatdoc;
 
 pub fn generate_code(commands: Vec<SourceCommand>) -> Result<Vec<String>, String> {
     let mut scope: Vec<String> = Vec::new();
+    let mut should_bootstrap = false;
 
-    commands
+    let mut instructions =
+        commands
         .iter()
         .map(|source_command|{
             if let Command::Function {name: function, nvars: _} = source_command.command() {
+                should_bootstrap = should_bootstrap || *function == "Sys.init";
                 scope.push(format!("{function}"));
-            } else if let Command::Return = source_command.command()  {
-                scope.pop();
             }
 
             generate_code_for_command(&source_command, scope.last())
-        }).collect()
+        }).collect::<Result<Vec<String>, String>>()?;
+
+    if should_bootstrap {
+        instructions.insert(0, bootstrap());
+    }
+
+    Ok(instructions)
+}
+
+fn bootstrap() -> String {
+    let mut asm: Vec<String> = Vec::new();
+    asm.push(formatdoc!(
+        "@256
+        D=A
+        @SP
+        M=D
+        @LCL
+        M=-1
+        @2
+        D=-A
+        @ARG
+        M=D
+        @3
+        D=-A
+        @THIS
+        M=D
+        @4
+        D=-A
+        @THAT
+        M=D"
+    ));
+
+    let command = Command::Call { name: "Bootstrap", nargs: 0 };
+    let sc = SourceCommand::bootstrap(command);
+    asm.push(generate_call(&sc, "Sys.init", 0, Some(&"Bootstrap".to_string())).unwrap());
+
+    asm.join("\n")
 }
 
 fn generate_code_for_command(source_command: &SourceCommand, scope: Option<&String>) -> Result<String, String> {
@@ -33,7 +70,7 @@ fn generate_code_for_command(source_command: &SourceCommand, scope: Option<&Stri
         Command::Goto(label) => generate_goto(source_command, label, scope),
         Command::IfGoto(label) => generate_if_goto(source_command, label, scope),
         Command::Label(label) => generate_label(source_command, label, scope),
-        Command::Call {name, nargs } => generate_call(name, *nargs),
+        Command::Call {name, nargs } => generate_call(source_command, name, *nargs, scope),
         Command::Function { name, nvars } => generate_function(name, *nvars),
         Command::Return => generate_return(),
     };
@@ -75,8 +112,43 @@ fn generate_label(source_command: &SourceCommand, label: &str, scope: Option<&St
     Ok(format!("({label_scope}${label})"))
 }
 
-fn generate_call(name: &str, nargs: u16) -> Result<String, String> {
-    Ok(format!(""))
+fn generate_call(source_command: &SourceCommand, name: &str, nargs: u16, scope: Option<&String>) -> Result<String, String> {
+    let arg_offset = nargs + 5;
+    let file = source_command.file_base().to_string();
+    let label_scope = scope.unwrap_or(&file);
+    let return_label = format!("{label_scope}$ret.{}", source_command.line());
+    let mut asm: Vec<String> = Vec::new();
+    asm.push(formatdoc!(
+        "@{return_label}
+        D=A"
+    ));
+    asm.push(push_d());
+    asm.push(push_symbol("LCL"));
+    asm.push(push_symbol("ARG"));
+    asm.push(push_symbol("THIS"));
+    asm.push(push_symbol("THAT"));
+    // ARG= SP - 5 - args
+    asm.push(formatdoc!(
+        "@SP
+        D=M
+        @{arg_offset}
+        D=D-A
+        @ARG
+        M=D"
+    ));
+    asm.push(formatdoc!(
+        "@SP
+        D=M
+        @LCL
+        M=D"
+    ));
+    asm.push(formatdoc!(
+        "@{name}
+        0;JMP"
+    ));
+    asm.push(format!("({return_label})"));
+
+    Ok(asm.join("\n"))
 }
 
 fn generate_function(name: &str, nvars: u16) -> Result<String, String> {
@@ -102,11 +174,8 @@ fn generate_return() -> Result<String, String> {
     asm.push(formatdoc!(
         "@frame
         D=M
-        D=D-1
-        D=D-1
-        D=D-1
-        D=D-1
-        A=D-1
+        @5
+        A=D-A
         D=M
         @retaddr
         M=D"
@@ -348,8 +417,7 @@ fn generate_comparison(sc: &SourceCommand, comp: &str) -> Result<String, String>
         (COMP_TRUE_{file}.{line})
         @1
         D=-A
-        (COMP_END_{file}.{line})
-        "
+        (COMP_END_{file}.{line})"
     ));
     asm.push(push_d());
 
@@ -382,5 +450,13 @@ fn push_d() -> String {
         M=D
         @SP
         M=M+1"
+    )
+}
+
+fn push_symbol(symbol: &str) -> String {
+    formatdoc!(
+        "@{symbol}
+        D=M
+        {}", push_d()
     )
 }

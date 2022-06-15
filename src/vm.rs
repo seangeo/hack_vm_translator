@@ -204,6 +204,15 @@ pub struct SourceCommand<'a> {
 }
 
 impl<'a> SourceCommand<'a> {
+    pub fn bootstrap(command: Command) -> SourceCommand {
+        SourceCommand {
+            line: 0,
+            command: command,
+            source: "Bootstrap",
+            file_base: "Bootstrap"
+        }
+    }
+
     pub fn line(&self) -> usize {
         self.line
     }
